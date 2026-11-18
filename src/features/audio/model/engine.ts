@@ -1,7 +1,10 @@
 import { reactive, shallowRef } from "vue";
-import type { Analysis, StageDocument } from "../../../shared/types";
-import { analyse } from "../lib/analyse";
+import type { Analysis, StageDocument, SpectrumStatus } from "../../../shared/types";
 import { demoBuffer } from "../lib/demo";
+import { SpectrumEngine } from "../lib/spectrum";
+
+const EMPTY_BANDS = 64;
+
 export function createAudio(doc: StageDocument) {
   const state = reactive({
     playing: false,
@@ -12,8 +15,19 @@ export function createAudio(doc: StageDocument) {
     error: "",
     loading: false,
   });
+  const spectrumStatus = reactive<SpectrumStatus>({
+    sampleRate: 0,
+    nyquist: 0,
+    binHz: 0,
+    fftSize: 0,
+    bands: doc.spectrum.bands,
+    minHz: 0,
+    maxHz: 0,
+    error: "",
+    warning: "",
+  });
   const frame = shallowRef<Analysis>({
-    bins: Array(128).fill(0),
+    bands: Array(EMPTY_BANDS).fill(0),
     wave: Array(256).fill(0),
     rms: 0,
     bass: 0,
@@ -21,9 +35,7 @@ export function createAudio(doc: StageDocument) {
     time: 0,
   });
   let ctx: AudioContext,
-    analyser: AnalyserNode,
-    gain: GainNode,
-    destination: MediaStreamAudioDestinationNode;
+    engine: SpectrumEngine;
   let buffer: AudioBuffer,
     node: AudioBufferSourceNode | MediaStreamAudioSourceNode | undefined,
     mic: MediaStream | undefined;
@@ -31,18 +43,18 @@ export function createAudio(doc: StageDocument) {
     offset = 0,
     epoch = 0,
     raf = 0;
+
   function init() {
     if (ctx) return;
     ctx = new AudioContext();
-    analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    gain = ctx.createGain();
-    destination = ctx.createMediaStreamDestination();
-    analyser.connect(gain);
-    gain.connect(ctx.destination);
-    analyser.connect(destination);
+    engine = new SpectrumEngine(ctx, spectrumStatus);
     buffer = demoBuffer(ctx);
   }
+
+  function activeScene() {
+    return doc.scenes.find((s) => s.id === doc.activeId) ?? doc.scenes[0];
+  }
+
   function detach() {
     if (node) {
       if (node instanceof AudioBufferSourceNode) {
@@ -57,24 +69,17 @@ export function createAudio(doc: StageDocument) {
     mic?.getTracks().forEach((t) => t.stop());
     mic = undefined;
   }
+
   function pump() {
     if (!ctx) return;
-    const f = new Uint8Array(analyser.frequencyBinCount),
-      w = new Uint8Array(analyser.fftSize);
-    analyser.smoothingTimeConstant = doc.smoothing;
-    gain.gain.value = state.source === "mic" ? 0 : doc.gain;
-    analyser.getByteFrequencyData(f);
-    analyser.getByteTimeDomainData(w);
+    // 每帧按当前场景/全局配置同步；频段数量、范围、采样率变化都在这里平滑衔接。
+    engine.sync(doc.spectrum, activeScene().spectrum);
+    engine.setMonitorGain(doc.gain, state.source === "mic");
     state.position = state.playing ? offset + ctx.currentTime - origin : offset;
-    frame.value = analyse(
-      f,
-      w,
-      state.position,
-      doc.sensitivity,
-      frame.value.bass,
-    );
+    frame.value = engine.read(state.position);
     raf = requestAnimationFrame(pump);
   }
+
   async function play() {
     init();
     await ctx.resume();
@@ -86,18 +91,21 @@ export function createAudio(doc: StageDocument) {
     node = ctx.createBufferSource();
     node.buffer = buffer;
     node.loop = true;
-    node.connect(analyser);
+    engine.attach(node);
     origin = ctx.currentTime;
     node.start(0, offset % buffer.duration);
     state.playing = true;
     if (!raf) pump();
   }
+
   function pause() {
     if (!state.playing) return;
     offset = state.position;
     detach();
+    engine.softReset();
     state.playing = false;
   }
+
   async function file(file: File) {
     init();
     const ticket = ++epoch;
@@ -122,6 +130,7 @@ export function createAudio(doc: StageDocument) {
       if (ticket === epoch) state.loading = false;
     }
   }
+
   async function microphone() {
     init();
     const ticket = ++epoch;
@@ -134,7 +143,7 @@ export function createAudio(doc: StageDocument) {
       detach();
       mic = stream;
       node = ctx.createMediaStreamSource(stream);
-      node.connect(analyser);
+      engine.attach(node);
       state.source = "mic";
       state.name = "Live microphone";
       state.playing = true;
@@ -146,6 +155,7 @@ export function createAudio(doc: StageDocument) {
       state.error = "麦克风不可用或未获授权，原有音源已保留。";
     }
   }
+
   async function demo() {
     init();
     ++epoch;
@@ -158,15 +168,18 @@ export function createAudio(doc: StageDocument) {
     state.duration = 16;
     await play();
   }
+
   function dispose() {
     ++epoch;
     cancelAnimationFrame(raf);
     detach();
     void ctx?.close();
   }
+
   return {
     state,
     frame,
+    spectrumStatus,
     play,
     pause,
     file,
@@ -175,8 +188,9 @@ export function createAudio(doc: StageDocument) {
     dispose,
     stream: () => {
       init();
-      return destination.stream;
+      return engine.stream;
     },
   };
 }
+
 export type AudioEngine = ReturnType<typeof createAudio>;

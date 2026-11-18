@@ -6,7 +6,7 @@ defineProps<{ doc: StageDocument; controls: LiveControls; beat: boolean }>();
 <template>
   <section class="panel live-panel">
     <div class="panel-heading">
-      <span>04 / PERFORMANCE</span
+      <span>05 / PERFORMANCE</span
       ><span class="dot" :class="{ on: beat }"></span>
     </div>
     <div class="tempo">
@@ -34,13 +34,10 @@ defineProps<{ doc: StageDocument; controls: LiveControls; beat: boolean }>();
     ><label class="toggle"
       ><input type="checkbox" v-model="doc.strobe" />节拍闪光
       <small>含快速闪光</small></label
-    ><label class="control"
-      >频谱平滑 <b>{{ doc.smoothing.toFixed(2) }}</b><input
-        type="range"
-        min="0"
-        max="0.95"
-        step="0.01"
-        v-model.number="doc.smoothing"
-    /></label>
+    >
+    <p class="muted response-note">
+      频谱响应已按场景独立配置，在「02 / SPECTRUM MAPPING」面板调整敏捷 /
+      均衡 / 绵密，鼓点节拍始终走快速分析通道。
+    </p>
   </section>
 </template>

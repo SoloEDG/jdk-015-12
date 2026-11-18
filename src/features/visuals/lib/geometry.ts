@@ -30,7 +30,8 @@ export function drawScene(
       c.beginPath();
       for (let i = 0; i <= 256; i++) {
         const q = (i / 256) * Math.PI * 2;
-        const bin = a.bins[Math.floor((i / 256) * a.bins.length)] ?? 0;
+        // 环形与柱状读取同一份按音乐频率映射的频段能量，理解保持一致。
+        const bin = a.bands[Math.floor((i / 256) * a.bands.length)] ?? 0;
         const r =
           base * (0.68 + ring * 0.065) * pulse +
           (Math.sin(q * 5 + phase * 0.8 + ring) * 8 + bin * power * 48) *
@@ -57,10 +58,11 @@ export function drawScene(
       c.fill();
     }
   } else if (s.kind === "spectrum") {
-    const n = 64,
+    // 柱数直接跟随全局频段数量，每一柱就是一个可调频段。
+    const n = Math.max(8, a.bands.length),
       bw = (w * 0.72) / n;
     for (let i = 0; i < n; i++) {
-      const v = a.bins[Math.floor((i * a.bins.length) / n)] || 0.015;
+      const v = a.bands[i] ?? 0.015;
       const bh = 12 + v * h * 0.45 * s.intensity * sensitivity;
       c.fillStyle = t.colors[i % 3];
       c.fillRect(w * 0.14 + i * bw, cy - bh / 2, bw * 0.55, bh);

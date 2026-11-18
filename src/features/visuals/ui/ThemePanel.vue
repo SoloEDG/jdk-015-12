@@ -6,7 +6,7 @@ defineProps<{ scene: Scene }>();
 <template>
   <section class="panel themes">
     <div class="panel-heading">
-      <span>03 / VISUAL PALETTE</span><span>4 THEMES</span>
+      <span>04 / VISUAL PALETTE</span><span>4 THEMES</span>
     </div>
     <div class="theme-options">
       <button

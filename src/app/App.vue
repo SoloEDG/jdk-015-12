@@ -9,7 +9,7 @@ import {
   ArrowUpRight,
 } from "lucide-vue-next";
 import { createDocument } from "../shared/document";
-import { createAudio, AudioPanel } from "../features/audio";
+import { createAudio, AudioPanel, SpectrumPanel } from "../features/audio";
 import { StageCanvas, ThemePanel } from "../features/visuals";
 import { createScenes, ScenePanel, SceneStrip } from "../features/scenes";
 import {
@@ -80,10 +80,10 @@ onUnmounted(() => {
     </div>
     <main>
       <aside class="left-column">
-        <AudioPanel :engine="audio" :doc="doc" /><ScenePanel
+        <AudioPanel :engine="audio" :doc="doc" /><SpectrumPanel
+          :engine="audio"
           :doc="doc"
-          :store="scenes"
-        />
+        /><ScenePanel :doc="doc" :store="scenes" />
       </aside>
       <div class="center-column">
         <section class="stage-shell" ref="stage">

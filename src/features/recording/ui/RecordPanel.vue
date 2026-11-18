@@ -7,7 +7,7 @@ defineEmits<{ start: [] }>();
 <template>
   <section class="panel record-panel">
     <div class="panel-heading">
-      <span>05 / CAPTURE SESSION</span><span>1280 × 720</span>
+      <span>06 / CAPTURE SESSION</span><span>1280 × 720</span>
     </div>
     <div class="record-top">
       <div>
@@ -32,6 +32,9 @@ defineEmits<{ start: [] }>();
       }}
     </button>
     <p v-if="recorder.state.error" role="alert">{{ recorder.state.error }}</p>
-    <small class="muted">切换场景不中断录制 · 保存于本次会话</small>
+    <small class="muted"
+      >切换场景不中断录制 · 频谱响应与舞台实时一致 ·
+      分析只读不处理音频，原音乐音高不变 · 保存于本次会话</small
+    >
   </section>
 </template>

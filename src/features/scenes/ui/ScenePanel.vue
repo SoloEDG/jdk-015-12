@@ -7,7 +7,7 @@ defineProps<{ doc: StageDocument; store: SceneStore }>();
 <template>
   <section class="panel scene-panel">
     <div class="panel-heading">
-      <span>02 / SCENE COLLECTION</span><span>04</span>
+      <span>03 / SCENE COLLECTION</span><span>04</span>
     </div>
     <button
       v-for="(s, i) in doc.scenes"
